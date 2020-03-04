@@ -123,10 +123,6 @@ def create_colormap(scaled_motion, raw_frame):
     return result_overlay
 
 def get_same_dir_path(file):
-    if not os.path.exists(file):
-        print("Couldn't find video file!")
-        exit(1)
-        return None
     dir = os.path.dirname(os.path.realpath(__file__))
     return dir + "\\" + file
 
