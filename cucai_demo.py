@@ -17,8 +17,6 @@ MODE_COLORIZED = 3
 HEAT_MAP = "HEATMAP"
 
 # change as needed
-
-# no error catching for if the files don't exist!
 FILE_NAMES = ["street.mp4","intersection_trimmed_lowres.mp4"]
 MODE_DELAYS = [30, 20, 17, 10]
 RESET_THRESHOLD = 400
@@ -161,7 +159,7 @@ def get_same_dir_path(file):
     dir = os.path.dirname(os.path.realpath(__file__))
     return dir + "\\" + file
 
-def handle_if_open_failed(cap, cam_active):
+def handle_if_open_failed(cap, camera_active):
     if not cap.isOpened():
         if camera_active:
             print("Error opening camera device!")
