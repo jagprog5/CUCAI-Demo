@@ -9,31 +9,40 @@ import cv2
 import numpy as np
 import os
 
+# const
+MODE_NORMAL = 0
+MODE_FRAME_DIFF = 1
+MODE_MOTION = 2
+MODE_COLORIZED = 3
 HEAT_MAP = "HEATMAP"
-FILE_NAME = "street.mp4"
-MODE_FRAME_DIFF = 0
-MODE_MOTION = 1
-MODE_COLORIZED = 2
+
+# change as needed
+
+# no error catching for if the files don't exist!
+FILE_NAMES = ["street.mp4","intersection_trimmed_lowres.mp4"]
+MODE_DELAYS = [30, 20, 17, 10]
 RESET_THRESHOLD = 400
 FULL_SCREEN = True
+CAMERA_DEFAULT = False
+VID_START_INDEX = 0
 
 def main():
     motion = None
     previous_frame = None
     mode = 0
     frame_count = 0
-    camera_active = True
+    camera_active = CAMERA_DEFAULT
+    vid_index = VID_START_INDEX
 
     if FULL_SCREEN:
         cv2.namedWindow(HEAT_MAP, cv2.WND_PROP_FULLSCREEN)
         cv2.setWindowProperty(HEAT_MAP, cv2.WND_PROP_ASPECT_RATIO, cv2.WINDOW_KEEPRATIO)
         cv2.setWindowProperty(HEAT_MAP, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
-    print("Opening camera...")
-    cap = cv2.VideoCapture(0)
-    if not cap.isOpened():
-        print("Error opening camera!")
-        exit(1)
+    if camera_active:
+        print("Opening camera...")
+    cap = cv2.VideoCapture(0 if camera_active else get_same_dir_path(FILE_NAMES[0]))
+    handle_if_open_failed(cap, camera_active)
     
     while cap.isOpened():
         ret, frame = cap.read()
@@ -42,13 +51,19 @@ def main():
                 print("Camera disconnected!")
                 break
             else:
-                print("Video ended. Switching back to camera...")
-                cap = cv2.VideoCapture(0)
+                if CAMERA_DEFAULT:
+                    print("Video ended. Switching back to camera...")
+                    camera_active = True
+                    cap = cv2.VideoCapture(0)
+                else:
+                    print("Video ended. Restarting video...")
+                    cap = cv2.VideoCapture(get_same_dir_path(FILE_NAMES[vid_index]))
+                handle_if_open_failed(cap, camera_active)
+                
+                # reset vals
                 previous_frame = None
                 motion = None
-                camera_active = True
                 continue
-            
         
         # flip horizontally. Make it like a mirror
         if camera_active:
@@ -60,7 +75,9 @@ def main():
                 motion = np.zeros(diff.shape[:2], np.uint8)
             motion += diff
             
-            if mode == MODE_FRAME_DIFF:
+            if mode == MODE_NORMAL:
+                cv2.imshow(HEAT_MAP, frame)
+            elif mode == MODE_FRAME_DIFF:
                 max = np.amax(diff)
                 if max != 0:
                     cv2.imshow(HEAT_MAP, diff * 255)
@@ -77,23 +94,41 @@ def main():
                 if frame_count > RESET_THRESHOLD:
                     frame_count = 0
                     motion = None
-                if frame_count % 50 == 0:
+                if frame_count % 100 == 0:
                     print(frame_count)
 
-            char = cv2.waitKey(1) & 0xFF
+            char = cv2.waitKey(MODE_DELAYS[mode]) & 0xFF
             if char == ord(' '):
                 mode += 1
-                if mode >= 3:
+                if mode >= 4:
                     mode = 0
             elif char == ord('m'):
                 motion = None
             elif char == ord('t'):
                 # toggle to/from video and camera feeds
                 camera_active = not camera_active
+
+                # reset vals
                 motion = None
                 previous_frame = None
                 frame_count = 0
-                cap = cv2.VideoCapture(0 if camera_active else get_same_dir_path(FILE_NAME))
+
+                cap = cv2.VideoCapture(0 if camera_active else get_same_dir_path(FILE_NAMES[vid_index]))
+                handle_if_open_failed(cap, camera_active)
+                continue
+            elif char == ord('y') and not camera_active:
+                # toggle to next video
+                vid_index += 1
+                if vid_index >= len(FILE_NAMES):
+                    vid_index = 0
+                
+                # reset vals
+                motion = None
+                previous_frame = None
+                frame_count = 0
+
+                cap = cv2.VideoCapture(get_same_dir_path(FILE_NAMES[vid_index]))
+                handle_if_open_failed(cap, camera_active)
                 continue
             elif char == ord('q') or char == 27: # 27 is esc
                 break
@@ -125,6 +160,14 @@ def create_colormap(scaled_motion, raw_frame):
 def get_same_dir_path(file):
     dir = os.path.dirname(os.path.realpath(__file__))
     return dir + "\\" + file
+
+def handle_if_open_failed(cap, cam_active):
+    if not cap.isOpened():
+        if camera_active:
+            print("Error opening camera device!")
+        else:
+            print("Error finding video file!")
+        exit(1)
 
 if __name__ == '__main__':
     main()
