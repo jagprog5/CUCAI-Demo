@@ -1,6 +1,6 @@
 """
 John Giorshev
-2020-03-03
+2020-03-07
 
 Demo for CUCAI presentation.
 """
@@ -34,7 +34,6 @@ def main():
 
     if FULL_SCREEN:
         cv2.namedWindow(HEAT_MAP, cv2.WND_PROP_FULLSCREEN)
-        cv2.setWindowProperty(HEAT_MAP, cv2.WND_PROP_ASPECT_RATIO, cv2.WINDOW_KEEPRATIO)
         cv2.setWindowProperty(HEAT_MAP, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
     if camera_active:
@@ -63,9 +62,8 @@ def main():
                 motion = None
                 continue
         
-        # flip horizontally. Make it like a mirror
         if camera_active:
-            frame = cv2.flip(frame, 1)
+            frame = cv2.flip(frame, 1) # flip horizontally. Make it like a mirror
         
         if previous_frame is not None:
             diff = highlight_difference(previous_frame, frame, 1)
@@ -89,11 +87,10 @@ def main():
             
             if camera_active:
                 frame_count += 1
+                # periodically clear motion
                 if frame_count > RESET_THRESHOLD:
                     frame_count = 0
                     motion = None
-                if frame_count % 100 == 0:
-                    print(frame_count)
 
             char = cv2.waitKey(MODE_DELAYS[mode]) & 0xFF
             if char == ord(' '):
@@ -115,7 +112,7 @@ def main():
                 handle_if_open_failed(cap, camera_active)
                 continue
             elif char == ord('y') and not camera_active:
-                # toggle to next video
+                # toggle to next video if already showing videos
                 vid_index += 1
                 if vid_index >= len(FILE_NAMES):
                     vid_index = 0
